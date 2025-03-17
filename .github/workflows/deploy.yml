@@ -100,13 +100,19 @@ jobs:
       run: |
         sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./frontend/ ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/frontend/
 
+    # Update www-data permissions on /var/www/html/frontend
+    - name: Ensure correct permissions on /var/www/html/frontend
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R www-data:www-data /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
+
     # Restart Node.js App on EC2
     - name: Restart Node.js App on EC2
       run: |
         sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart myapp'
         
-    # Restart Node.js App on EC2
-    - name: Restart Node.js App on EC2
+    # Restart Nginx
+    - name: Restart Nginx
       run: |
         sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart nginx'
 
