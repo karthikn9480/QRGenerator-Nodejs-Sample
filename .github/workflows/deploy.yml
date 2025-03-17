@@ -1,0 +1,117 @@
+name: Node.js Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]  # Define the Node.js version
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Setup Node.js environment
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # Install dependencies for server and frontend
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm install  # Install server dependencies
+
+    # Install sshpass for password-based SSH connection
+    - name: Install sshpass
+      run: sudo apt-get install sshpass -y
+
+    # Configure AWS credentials
+    - name: Configure AWS credentials
+      run: |
+        mkdir -p ~/.aws
+        echo "[default]" > ~/.aws/credentials
+        echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
+        echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+        echo "[default]" > ~/.aws/config
+        echo "region = ${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+
+    # Get the public IP of the runner machine
+    - name: Get public IP
+      id: get_ip
+      run: echo "ip=$(curl -s ifconfig.me)" >> $GITHUB_ENV
+
+    # Whitelist the runner's IP in the security group
+    - name: Whitelist inbound rule in security group
+      run: |
+        IP=${{ env.ip }}
+        aws ec2 authorize-security-group-ingress --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} --protocol tcp --port 22 --cidr ${IP}/32 --region ${{ secrets.AWS_DEFAULT_REGION }}
+
+    # Setup SSH for EC2 Deployment
+    - name: Setup SSH for EC2 Deployment
+      run: |
+        mkdir -p ~/.ssh
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        ssh-keyscan -H "${{ secrets.EC2_PUBLIC_IP }}" >> ~/.ssh/known_hosts
+
+    # Verify SSH Connection
+    - name: Verify SSH Connection
+      run: |
+        echo "Checking SSH connection..."
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
+
+    # Ensure correct permissions on /var/www/html/server
+    - name: Ensure correct permissions on /var/www/html/server
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R ubuntu:ubuntu /var/www/html/server'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/server'
+
+    # Ensure correct permissions on /var/www/html/frontend
+    - name: Ensure correct permissions on /var/www/html/frontend
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R ubuntu:ubuntu /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
+
+    # Clear contents of /var/www/html/server (if needed)
+    - name: Clear contents of /var/www/html/server
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/server/*'
+
+    # Clear contents of /var/www/html/frontend (if needed)
+    - name: Clear contents of /var/www/html/frontend
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/frontend/*'
+
+    # Copy backend (server) files to EC2 /var/www/html/server
+    - name: Copy server files to EC2
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./server/ ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/server/
+
+    # Copy frontend files to EC2 /var/www/html/frontend
+    - name: Copy frontend files to EC2
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./frontend/ ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/frontend/
+
+    # Restart Node.js App on EC2
+    - name: Restart Node.js App on EC2
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart myapp'
+        
+    # Restart Node.js App on EC2
+    - name: Restart Node.js App on EC2
+      run: |
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart nginx'
+
+    # Remove inbound rule from security group
+    - name: Remove inbound rule from security group
+      run: |
+        IP=${{ env.ip }}
+        aws ec2 revoke-security-group-ingress --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} --protocol tcp --port 22 --cidr ${IP}/32 --region ${{ secrets.AWS_DEFAULT_REGION }}
