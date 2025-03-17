@@ -66,55 +66,55 @@ jobs:
     - name: Verify SSH Connection
       run: |
         echo "Checking SSH connection..."
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
 
     # Ensure correct permissions on /var/www/html/server
     - name: Ensure correct permissions on /var/www/html/server
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R ubuntu:ubuntu /var/www/html/server'
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/server'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R "${{ secrets.EC2_USERNAME }}":"${{ secrets.EC2_USERNAME }}" /var/www/html/server'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/server'
 
     # Ensure correct permissions on /var/www/html/frontend
     - name: Ensure correct permissions on /var/www/html/frontend
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R ubuntu:ubuntu /var/www/html/frontend'
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R "${{ secrets.EC2_USERNAME }}":"${{ secrets.EC2_USERNAME }}" /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
 
     # Clear contents of /var/www/html/server (if needed)
     - name: Clear contents of /var/www/html/server
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/server/*'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/server/*'
 
     # Clear contents of /var/www/html/frontend (if needed)
     - name: Clear contents of /var/www/html/frontend
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/frontend/*'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo rm -rf /var/www/html/frontend/*'
 
     # Copy backend (server) files to EC2 /var/www/html/server
     - name: Copy server files to EC2
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./server/ ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/server/
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./server/ "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/server/
 
     # Copy frontend files to EC2 /var/www/html/frontend
     - name: Copy frontend files to EC2
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./frontend/ ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/frontend/
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./frontend/ "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }}:/var/www/html/frontend/
 
     # Update www-data permissions on /var/www/html/frontend
     - name: Ensure correct permissions on /var/www/html/frontend
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R www-data:www-data /var/www/html/frontend'
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chown -R www-data:www-data /var/www/html/frontend'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo chmod -R 775 /var/www/html/frontend'
 
     # Restart Node.js App on EC2
     - name: Restart Node.js App on EC2
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart myapp'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart myapp'
         
     # Restart Nginx
     - name: Restart Nginx
       run: |
-        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart nginx'
+        sshpass -p "${{ secrets.EC2_PASSWORD }}" ssh -o StrictHostKeyChecking=no "${{ secrets.EC2_USERNAME }}"@${{ secrets.EC2_PUBLIC_IP }} 'sudo systemctl restart nginx'
 
     # Remove inbound rule from security group
     - name: Remove inbound rule from security group
