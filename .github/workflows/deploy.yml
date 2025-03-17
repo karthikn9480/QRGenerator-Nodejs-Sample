@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x]  # Define the Node.js version
+        node-version: [22.x]  # Define the Node.js version
 
     steps:
     - uses: actions/checkout@v2
